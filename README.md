@@ -1,6 +1,6 @@
 # HackMyVM - Quick .5
 
-![Quick5.png](Quick5.png)
+![quick5.png](quick5.png)
 
 Ein detaillierter Bericht über die Kompromittierung der HackMyVM-Maschine "Quick .5". Dieser Bericht dokumentiert den gesamten Prozess von der initialen Erkundung bis zur Erlangung von Root-Rechten.
 
